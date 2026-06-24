@@ -152,6 +152,10 @@ A Rust toolchain is only needed if you build the NIF locally instead of using a
 precompiled artifact — i.e. on a target not covered by the release matrix, or
 when forcing a build with `BUTTERAUGLI_BUILD=1`.
 
+## LLM Development Notice
+
+This library was developed with help from LLMs.
+
 ## License
 
 This wrapper is released under BSD-3-Clause, matching `butteraugli`.
