@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rustler = "0.38.0"
-butteraugli = { git = "https://github.com/imazen/butteraugli", rev = "2f91e77e4084801bf53c5f32d404f142e35e76c3" }
+butteraugli = { git = "https://github.com/imazen/butteraugli", rev = "4e78d6d" }
 enough = "0.4.4"
 almost-enough = "0.4.4"
 bytemuck = "1"

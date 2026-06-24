@@ -77,14 +77,16 @@ Butteraugli.compare(ref, dist, w, h, cancel: cancel_ref, timeout: 5_000)
 
 A cancel ref is single-use and can cover a whole batch.
 
-**Granularity.** The default sRGB `compare/5` on images ≥ 8×8 checks the ref
-between strips, so it aborts **mid-computation**. The other paths — `:linear_rgb`,
-sub-8×8 images, and all `Reference.compare/3` — check the ref **once at the
-start** of the computation (the crate has no strip-wise stop for these): they
-abort a ref that is already cancelled when the call begins (so batch
-cancellation works — cancel once, every subsequent compare aborts), but do not
-interrupt a compare already underway. To bound the wall-clock of one long
-compare, use the sRGB `compare/5` path rather than a precomputed reference.
+**Granularity.** `compare/5` on images ≥ 8×8 (either format) checks the ref
+between strips, so it aborts **mid-computation**. Sub-8×8 images and all
+`Reference.compare/3` check the ref **once at the start** of the computation:
+sub-8×8 inputs are padded onto the non-strip path, and `Reference.compare/3`
+uses the precomputed reference on purpose (the crate's strip-cancellable
+reference compare discards the precompute and its ~2× speedup). These abort a
+ref that is already cancelled when the call begins (so batch cancellation works
+— cancel once, every subsequent compare aborts), but do not interrupt a compare
+already underway. To bound the wall-clock of one long compare, use `compare/5`
+on a ≥ 8×8 image rather than a precomputed reference.
 
 ### With Vix
 

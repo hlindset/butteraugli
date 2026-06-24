@@ -1,8 +1,9 @@
 use almost_enough::SyncStopper;
 use butteraugli::precompute::ButteraugliReference;
 use butteraugli::{
-    butteraugli_linear_with_stop, butteraugli_strip_with_stop, butteraugli_with_stop,
-    ButteraugliError, ButteraugliParams, ButteraugliResult, ImgVec, RGB, RGB8,
+    butteraugli_linear_strip_with_stop, butteraugli_linear_with_stop, butteraugli_strip_with_stop,
+    butteraugli_with_stop, ButteraugliError, ButteraugliParams, ButteraugliResult, ImgVec, RGB,
+    RGB8,
 };
 use enough::{Stop, Unstoppable};
 use rustler::types::atom;
@@ -121,9 +122,8 @@ fn build_params(
 }
 
 // One-shot scoring. sub-8px inputs take the non-strip path (reflect-padded to
-// 8x8); larger sRGB inputs take the strip path (bounded memory + per-strip
-// cancellation). Linear has no public strip-with-stop, so it uses the
-// per-scale-cancellable non-strip path at every size.
+// 8x8, single cancellation check at entry); larger inputs of either format take
+// the strip path (bounded memory + per-strip cancellation).
 fn score_oneshot(
     fmt: &Format,
     r: &[u8],
@@ -144,7 +144,11 @@ fn score_oneshot(
         }
         Format::LinearRgb => {
             let (a, b) = (linear_img(r, w, h), linear_img(d, w, h));
-            butteraugli_linear_with_stop(a.as_ref(), b.as_ref(), params, stop)
+            if w < 8 || h < 8 {
+                butteraugli_linear_with_stop(a.as_ref(), b.as_ref(), params, stop)
+            } else {
+                butteraugli_linear_strip_with_stop(a.as_ref(), b.as_ref(), params, STRIP_HEIGHT, stop)
+            }
         }
     };
     result.map_err(to_compare_error)

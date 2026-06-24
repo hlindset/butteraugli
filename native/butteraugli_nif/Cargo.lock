@@ -36,7 +36,7 @@ dependencies = [
 [[package]]
 name = "butteraugli"
 version = "0.9.4"
-source = "git+https://github.com/imazen/butteraugli?rev=2f91e77e4084801bf53c5f32d404f142e35e76c3#2f91e77e4084801bf53c5f32d404f142e35e76c3"
+source = "git+https://github.com/imazen/butteraugli?rev=4e78d6d#4e78d6ddf15fc625522087b716319b7aac4e57da"
 dependencies = [
  "archmage",
  "enough",

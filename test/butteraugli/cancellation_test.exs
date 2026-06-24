@@ -71,6 +71,34 @@ defmodule Butteraugli.CancellationTest do
     assert abort_us < full_us / 2
   end
 
+  test "cancelling from another process aborts an in-flight :linear_rgb compare" do
+    # Same rationale as the sRGB mid-flight test above. As of butteraugli
+    # 4e78d6d, :linear_rgb ≥ 8×8 takes the strip path (butteraugli_linear_strip_with_stop),
+    # so a cancel lands mid-flight rather than once-at-entry.
+    big = Fixtures.solid_linear_rgb(3000, 3000, 0.5)
+    opts = [format: :linear_rgb]
+
+    {full_us, {:ok, _}} = :timer.tc(fn -> Butteraugli.compare(big, big, 3000, 3000, opts) end)
+
+    tok = CancelRef.new()
+    parent = self()
+
+    task =
+      Task.async(fn ->
+        send(parent, :started)
+        Butteraugli.compare(big, big, 3000, 3000, [cancel: tok] ++ opts)
+      end)
+
+    assert_receive :started, 1000
+    Process.sleep(10)
+    Butteraugli.cancel(tok)
+
+    {abort_us, result} = :timer.tc(fn -> Task.await(task, 30_000) end)
+    assert {:error, :cancelled} = result
+    # Proves the abort was mid-flight, not run-to-completion.
+    assert abort_us < full_us / 2
+  end
+
   # NOTE (deviation from plan): ButteraugliReference::compare_with_stop checks
   # the stop signal only ONCE at entry (before any heavy computation). Mid-flight
   # cancellation of Reference.compare does NOT abort reliably — if the signal

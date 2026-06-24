@@ -15,11 +15,15 @@ defmodule Butteraugli.Reference do
   result carries a `diffmap`.
 
   Cancellation (`:cancel`/`:timeout`) on a reference compare is checked **once,
-  at the start** of each call — the precompute path has no strip-wise stop. It
-  therefore aborts a ref that is already cancelled when the call begins
-  (including batch cancellation: cancel one ref to abort every subsequent
+  at the start** of each call. This binding uses the warm precomputed path on
+  purpose: the crate does expose a strip-cancellable reference compare, but it
+  discards the precomputed reference (recomputing the reference side per strip),
+  defeating the ~2× speedup that is the whole point of `Butteraugli.Reference`.
+  So a reference compare aborts a ref that is already cancelled when the call
+  begins (including batch cancellation: cancel one ref to abort every subsequent
   compare that uses it), but does **not** interrupt a compare that is already
-  running. See `Butteraugli` for the full granularity matrix.
+  running. If you need mid-flight cancellation, use `Butteraugli.compare/5` on a
+  ≥ 8×8 image. See `Butteraugli` for the full granularity matrix.
   """
 
   alias Butteraugli.{Cancellation, Native, Result, Validate}

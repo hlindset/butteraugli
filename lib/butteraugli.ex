@@ -28,24 +28,25 @@ defmodule Butteraugli do
   `{:error, :cancelled}` or `{:error, :timeout}`. Create a ref with
   `Butteraugli.CancelRef.new/0` and trip it with `cancel/1`.
 
-  The *granularity* differs by path, because the underlying crate checks the
-  ref at different points:
+  The *granularity* differs by path, because the binding polls the ref at
+  different points:
 
-    * **sRGB `compare/5` on images ≥ 8×8** (the default path) checks the ref
-      between strips, so it aborts **mid-computation** — a ref cancelled, or a
-      timeout firing, partway through a long compare stops it promptly.
-    * **Every other path** — `:linear_rgb`, sub-8×8 images, and all
-      `Butteraugli.Reference.compare/3` — checks the ref **once, at the start**
-      of the computation (the crate exposes no strip-wise stop for these). These
-      honor a ref that is *already* cancelled when the call begins — including
-      batch cancellation, where cancelling one ref aborts every *subsequent*
-      compare that uses it — but a cancel/timeout arriving *after* the
-      computation is underway will not interrupt it; that call runs to
-      completion.
+    * **`compare/5` on images ≥ 8×8** (either format) checks the ref between
+      strips, so it aborts **mid-computation** — a ref cancelled, or a timeout
+      firing, partway through a long compare stops it promptly.
+    * **Sub-8×8 images and all `Butteraugli.Reference.compare/3`** check the ref
+      **once, at the start** of the computation. (Sub-8×8 inputs are padded and
+      take the non-strip path; `Butteraugli.Reference.compare/3` uses the
+      precomputed reference on purpose — the crate's strip-cancellable reference
+      compare discards the precompute and its ~2× speedup.) These honor a ref
+      that is *already* cancelled when the call begins — including batch
+      cancellation, where cancelling one ref aborts every *subsequent* compare
+      that uses it — but a cancel/timeout arriving *after* the computation is
+      underway will not interrupt it; that call runs to completion.
 
-  If you must bound the wall-clock of an individual long compare, use the sRGB
-  `compare/5` path (it rebuilds the reference each call but is fully
-  cancellable) rather than `Butteraugli.Reference`.
+  If you must bound the wall-clock of an individual long compare, use `compare/5`
+  on a ≥ 8×8 image (it rebuilds the reference each call but is fully cancellable)
+  rather than `Butteraugli.Reference`.
   """
 
   alias Butteraugli.{Cancellation, CancelRef, Native, Result, Validate}
