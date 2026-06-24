@@ -11,6 +11,14 @@ The crate is a port of Google's butteraugli implementation from
 > in a crates.io release. We will switch to a proper versioned as soon as
 > possible.
 
+## Installation
+
+```elixir
+def deps do
+  [{:butteraugli, github: "hlindset/butteraugli"}]
+end
+```
+
 ## What is Butteraugli?
 
 Butteraugli estimates the perceived difference between two images using a model
@@ -29,14 +37,6 @@ accounts for:
 | < 1.0     | Images appear identical to most viewers |
 | 1.0 - 2.0 | Subtle differences may be noticeable    |
 | > 2.0     | Visible differences between images      |
-
-## Installation
-
-```elixir
-def deps do
-  [{:butteraugli, github: "hlindset/butteraugli"}]
-end
-```
 
 ## Usage
 
