@@ -10,6 +10,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v4
+      - name: Check Rust formatting
+        run: mise exec -- cargo fmt --manifest-path native/butteraugli_nif/Cargo.toml --check
       - name: Install deps
         run: mise exec -- mix deps.get
       - name: Compile (warnings as errors)

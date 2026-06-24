@@ -82,7 +82,10 @@ impl Format {
 // Owned pixel buffers. BEAM (sub-)binaries are not guaranteed 2-/4-byte aligned,
 // so copy into owned, aligned buffers via from_ne_bytes rather than casting.
 fn rgb888_img(b: &[u8], w: usize, h: usize) -> ImgVec<RGB8> {
-    let px: Vec<RGB8> = b.chunks_exact(3).map(|c| RGB8::new(c[0], c[1], c[2])).collect();
+    let px: Vec<RGB8> = b
+        .chunks_exact(3)
+        .map(|c| RGB8::new(c[0], c[1], c[2]))
+        .collect();
     ImgVec::new(px, w, h)
 }
 
@@ -147,7 +150,13 @@ fn score_oneshot(
             if w < 8 || h < 8 {
                 butteraugli_linear_with_stop(a.as_ref(), b.as_ref(), params, stop)
             } else {
-                butteraugli_linear_strip_with_stop(a.as_ref(), b.as_ref(), params, STRIP_HEIGHT, stop)
+                butteraugli_linear_strip_with_stop(
+                    a.as_ref(),
+                    b.as_ref(),
+                    params,
+                    STRIP_HEIGHT,
+                    stop,
+                )
             }
         }
     };
@@ -156,7 +165,10 @@ fn score_oneshot(
 
 // Encode a ButteraugliResult as {score, pnorm_3, diffmap}. The diffmap is a
 // packed native-endian f32 binary (row-major, w*h values) when present, else nil.
-fn encode_result<'a>(env: Env<'a>, r: ButteraugliResult) -> Result<(f64, f64, Term<'a>), CompareError> {
+fn encode_result<'a>(
+    env: Env<'a>,
+    r: ButteraugliResult,
+) -> Result<(f64, f64, Term<'a>), CompareError> {
     let diff = match r.diffmap {
         Some(map) => {
             let (buf, _w, _h) = map.into_contiguous_buf();
@@ -226,7 +238,9 @@ fn reference_new(
     let s = source.as_slice();
     let inner = match fmt {
         Format::Rgb888 => ButteraugliReference::new(s, width, height, params),
-        Format::LinearRgb => ButteraugliReference::new_linear(&to_f32_vec(s), width, height, params),
+        Format::LinearRgb => {
+            ButteraugliReference::new_linear(&to_f32_vec(s), width, height, params)
+        }
     }
     .map_err(|e| e.to_string())?;
     Ok(ResourceArc::new(ReferenceResource { inner, format: fmt }))
@@ -254,8 +268,12 @@ fn reference_compare<'a>(
     let d = distorted.as_slice();
     let result = match (&reference.format, use_strips) {
         (Format::Rgb888, false) => reference.inner.compare_with_stop(d, stop),
-        (Format::Rgb888, true) => reference.inner.compare_strip_with_stop(d, STRIP_HEIGHT, stop),
-        (Format::LinearRgb, false) => reference.inner.compare_linear_with_stop(&to_f32_vec(d), stop),
+        (Format::Rgb888, true) => reference
+            .inner
+            .compare_strip_with_stop(d, STRIP_HEIGHT, stop),
+        (Format::LinearRgb, false) => reference
+            .inner
+            .compare_linear_with_stop(&to_f32_vec(d), stop),
         (Format::LinearRgb, true) => {
             reference
                 .inner
