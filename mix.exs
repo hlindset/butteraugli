@@ -12,7 +12,15 @@ defmodule Butteraugli.MixProject do
       description: "Butteraugli perceptual image-difference metric for Elixir (butteraugli NIF)",
       package: package(),
       name: "Butteraugli",
-      source_url: "https://github.com/hlindset/butteraugli"
+      source_url: "https://github.com/hlindset/butteraugli",
+      docs: docs()
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: ["README.md"]
     ]
   end
 

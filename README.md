@@ -13,7 +13,9 @@ The crate is a port of Google's butteraugli implementation from
 
 ## What is Butteraugli?
 
-Butteraugli estimates the perceived difference between two images using a model of human vision. Unlike simple pixel-wise metrics (PSNR, MSE), butteraugli accounts for:
+Butteraugli estimates the perceived difference between two images using a model
+of human vision. Unlike simple pixel-wise metrics (PSNR, MSE), butteraugli
+accounts for:
 
 - **Opsin dynamics**: Photosensitive chemical responses in the retina
 - **XYB color space**: Hybrid opponent/trichromatic representation
@@ -87,16 +89,16 @@ the reference. Tuning parameters are baked into the reference at build time:
 {:ok, s2} = Butteraugli.Reference.compare(ref, candidate2_rgb)
 ```
 
-`Reference.compare/3` takes `prefer: :speed | :memory` (default `:speed`).
-`:speed` reuses the precomputed reference (~2x faster, cancellation checked only
-at the start); `:memory` runs a strip-bounded walker with bounded peak memory
-and per-strip mid-flight cancellation, giving up the speedup. See
+`Butteraugli.Reference.compare/3` takes `prefer: :speed | :memory` (default
+`:speed`). `:speed` reuses the precomputed reference (~2x faster, cancellation
+checked only at the start); `:memory` runs a strip-bounded walker with bounded
+peak memory and per-strip mid-flight cancellation, giving up the speedup. See
 [Cancellation](#cancellation).
 
 ### Cancellation
 
-`compare/5` and `Reference.compare/3` accept `cancel:` (a
-`Butteraugli.CancelRef`) and `timeout:` (milliseconds):
+`Butteraugli.compare/5` and `Butteraugli.Reference.compare/3` accept `cancel:`
+(a `Butteraugli.CancelRef`) and `timeout:` (milliseconds):
 
 ```elixir
 cancel_ref = Butteraugli.CancelRef.new()
@@ -112,19 +114,20 @@ A cancel ref is single-use and can cover a whole batch.
 
 #### Granularity
 
-`compare/5` on images >= 8x8 (either format) checks the ref between strips, so
-it aborts mid-computation. Two paths check the ref once at the start instead:
-sub-8x8 images (padded onto the non-strip path) and `Reference.compare/3` with
-the default `prefer: :speed` (which reuses the precomputed reference for the
-~2x speedup). These abort a ref that is already cancelled when the call begins
-(so batch cancellation works — cancel once, every subsequent compare aborts),
-but do not interrupt a compare already underway. `Reference.compare/3` with
-`prefer: :memory` opts into the strip-bounded walker, which aborts
-mid-computation (per strip) at the cost of the speedup.
+`Butteraugli.compare/5` on images >= 8x8 (either format) checks the ref between
+strips, so it aborts mid-computation. Two paths check the ref once at the start
+instead: sub-8x8 images (padded onto the non-strip path) and
+`Butteraugli.Reference.compare/3` with the default `prefer: :speed` (which
+reuses the precomputed reference for the ~2x speedup). These abort a ref that
+is already cancelled when the call begins (so batch cancellation works — cancel
+once, every subsequent compare aborts), but do not interrupt a compare already
+underway. `Butteraugli.Reference.compare/3` with `prefer: :memory` opts into the
+strip-bounded walker, which aborts mid-computation (per strip) at the cost of
+the speedup.
 
 So to let a `cancel:`/`timeout:` interrupt one long compare partway through
-(bounding its wall-clock), use `compare/5` (which only does strip processing) on
-a >= 8x8 image or `Reference.compare(ref, dist, prefer: :memory)`.
+(bounding its wall-clock), use `Butteraugli.compare/5` (which only does strip
+processing) on a >= 8x8 image or `Reference.compare(ref, dist, prefer: :memory)`.
 
 ### With Vix
 
