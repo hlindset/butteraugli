@@ -1,14 +1,32 @@
 # butteraugli
 
 [Butteraugli](https://github.com/imazen/butteraugli) perceptual
-image-difference metric for Elixir, backed by the `butteraugli` Rust crate
-(BSD-3-Clause) via Rustler.
+image-difference metric for Elixir, backed by the
+[`butteraugli`](https://crates.io/crates/butteraugli) Rust crate via Rustler.
+The crate is a port of Google's butteraugli implementation from
+[libjxl](https://github.com/libjxl/libjxl).
 
-> **Note:** this binding pins `butteraugli` to a **git revision** because the
-> cooperative-cancellation API (`*_with_stop`) is not yet in a crates.io release
-> (latest is 0.9.3). This does not prevent publishing to Hex; consumers who
-> build the NIF from source fetch the pinned rev from GitHub, while precompiled-
-> NIF users are unaffected. The dep can move to `version = "0.9.4"` once it ships.
+> **Note:** this binding currently pins `butteraugli` to a git revision
+> because the cooperative-cancellation API (`*_with_stop`) has not yet landed
+> in a crates.io release. We will switch to a proper versioned as soon as
+> possible.
+
+## What is Butteraugli?
+
+Butteraugli estimates the perceived difference between two images using a model of human vision. Unlike simple pixel-wise metrics (PSNR, MSE), butteraugli accounts for:
+
+- **Opsin dynamics**: Photosensitive chemical responses in the retina
+- **XYB color space**: Hybrid opponent/trichromatic representation
+- **Visual masking**: How image features hide or reveal differences
+- **Multi-scale analysis**: UHF, HF, MF, LF frequency bands
+
+## Quality Thresholds
+
+| Score     | Interpretation                          |
+| --------- | --------------------------------------- |
+| < 1.0     | Images appear identical to most viewers |
+| 1.0 - 2.0 | Subtle differences may be noticeable    |
+| > 2.0     | Visible differences between images      |
 
 ## Installation
 
@@ -25,12 +43,10 @@ Inputs are packed binaries; the layout is selected with the `:format` option
 below `1.0` is perceptually identical, `1.0`–`2.0` is a subtle difference, and
 above `2.0` is a clearly visible difference.
 
-| format | element | channels | bytes/pixel | color space |
-| --- | --- | --- | --- | --- |
-| `:rgb888` (default) | `u8` | 3 | 3 | sRGB (gamma) |
-| `:linear_rgb` | `f32` | 3 | 12 | linear RGB |
-
-Multi-byte elements are native-endian.
+| format              | element | color space  | use case                     |
+| ------------------- | ------- | ------------ | ---------------------------- |
+| `:rgb888` (default) | `u8`    | sRGB (gamma) | Standard 8-bit images        |
+| `:linear_rgb`       | `f32`   | linear RGB   | HDR, 16-bit, float pipelines |
 
 ```elixir
 {:ok, %Butteraugli.Result{score: score}} =
@@ -38,12 +54,15 @@ Multi-byte elements are native-endian.
 ```
 
 `Butteraugli.Result` carries `score` (max-norm distance), `pnorm_3` (libjxl
-3-norm aggregation), and `diffmap`. The `diffmap` is `nil` unless you opt in:
+3-norm aggregation), and `diffmap`. Images smaller than 8x8 are padded up to
+butteraugli's floor (8x8) and scored, and diffmaps are cropped back to the
+input size before being returned.
+
+The `diffmap` is `nil` unless you opt in:
 
 ```elixir
 {:ok, %Butteraugli.Result{diffmap: diffmap}} =
   Butteraugli.compare(ref, dist, width, height, compute_diffmap: true)
-# diffmap: packed native-endian f32, width*height values, matching input dims.
 ```
 
 Tuning parameters fall back to crate defaults when omitted:
