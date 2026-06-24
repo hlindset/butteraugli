@@ -39,9 +39,7 @@ end
 ## Usage
 
 Inputs are packed binaries; the layout is selected with the `:format` option
-(default `:rgb888`). Butteraugli is a **distance**: lower is better. A score
-below `1.0` is perceptually identical, `1.0`–`2.0` is a subtle difference, and
-above `2.0` is a clearly visible difference.
+(default `:rgb888`).
 
 | format              | element | color space  | use case                     |
 | ------------------- | ------- | ------------ | ---------------------------- |
@@ -55,8 +53,8 @@ above `2.0` is a clearly visible difference.
 
 `Butteraugli.Result` carries `score` (max-norm distance), `pnorm_3` (libjxl
 3-norm aggregation), and `diffmap`. Images smaller than 8x8 are padded up to
-butteraugli's floor (8x8) and scored, and diffmaps are cropped back to the
-input size before being returned.
+butteraugli's floor (8x8) and scored. Diffmaps are cropped back to the input
+size before being returned.
 
 The `diffmap` is `nil` unless you opt in:
 
@@ -65,11 +63,20 @@ The `diffmap` is `nil` unless you opt in:
   Butteraugli.compare(ref, dist, width, height, compute_diffmap: true)
 ```
 
-Tuning parameters fall back to crate defaults when omitted:
+Two tuning parameters adjust the perceptual model:
+
+- `intensity_target` — display brightness in nits the images are assumed to be
+  viewed at (crate default `80.0`).
+- `hf_asymmetry` — multiplier weighting how added vs. removed high-frequency
+  detail is penalized (crate default `1.0`). Values above `1.0` penalize new
+  high-frequency artifacts (ringing, blocking) more than blurring; values below
+  `1.0` do the reverse.
 
 ```elixir
 Butteraugli.compare(ref, dist, w, h, intensity_target: 250.0, hf_asymmetry: 1.5)
 ```
+
+Both fall back to crate defaults when omitted.
 
 For a quality-search loop comparing many candidates against one original, reuse
 the reference. Tuning parameters are baked into the reference at build time:
@@ -81,9 +88,9 @@ the reference. Tuning parameters are baked into the reference at build time:
 ```
 
 `Reference.compare/3` takes `prefer: :speed | :memory` (default `:speed`).
-`:speed` reuses the precomputed reference (~2× faster, cancellation checked only
-at the start); `:memory` runs a strip-bounded walker with bounded peak memory and
-per-strip mid-flight cancellation, giving up the speedup. See
+`:speed` reuses the precomputed reference (~2x faster, cancellation checked only
+at the start); `:memory` runs a strip-bounded walker with bounded peak memory
+and per-strip mid-flight cancellation, giving up the speedup. See
 [Cancellation](#cancellation).
 
 ### Cancellation
@@ -93,6 +100,7 @@ per-strip mid-flight cancellation, giving up the speedup. See
 
 ```elixir
 cancel_ref = Butteraugli.CancelRef.new()
+
 # ... from another process, on client disconnect / deadline:
 Butteraugli.cancel(cancel_ref)
 
@@ -102,39 +110,29 @@ Butteraugli.compare(ref, dist, w, h, cancel: cancel_ref, timeout: 5_000)
 
 A cancel ref is single-use and can cover a whole batch.
 
-**Granularity.** `compare/5` on images ≥ 8×8 (either format) checks the ref
-between strips, so it aborts **mid-computation**. Two paths check the ref **once
-at the start** instead: sub-8×8 images (padded onto the non-strip path) and
-`Reference.compare/3` with the default `prefer: :speed` (which reuses the
-precomputed reference for the ~2× speedup). These abort a ref that is already
-cancelled when the call begins (so batch cancellation works — cancel once, every
-subsequent compare aborts), but do not interrupt a compare already underway.
-`Reference.compare/3` with `prefer: :memory` opts into the strip-bounded walker,
-which aborts **mid-computation** (per strip) at the cost of the speedup. To bound
-the wall-clock of one long compare, use `compare/5` on a ≥ 8×8 image or
-`Reference.compare(ref, dist, prefer: :memory)`.
+#### Granularity
+
+`compare/5` on images >= 8x8 (either format) checks the ref between strips, so
+it aborts mid-computation. Two paths check the ref once at the start instead:
+sub-8x8 images (padded onto the non-strip path) and `Reference.compare/3` with
+the default `prefer: :speed` (which reuses the precomputed reference for the
+~2x speedup). These abort a ref that is already cancelled when the call begins
+(so batch cancellation works — cancel once, every subsequent compare aborts),
+but do not interrupt a compare already underway. `Reference.compare/3` with
+`prefer: :memory` opts into the strip-bounded walker, which aborts
+mid-computation (per strip) at the cost of the speedup.
+
+So to let a `cancel:`/`timeout:` interrupt one long compare partway through
+(bounding its wall-clock), use `compare/5` (which only does strip processing) on
+a >= 8x8 image or `Reference.compare(ref, dist, prefer: :memory)`.
 
 ### With Vix
 
-If `:vix` is a dependency, pass images directly (coerced to 8-bit sRGB):
+If `:vix` is a dependency, you can pass images directly (coerced to 8-bit sRGB):
 
 ```elixir
 {:ok, %Butteraugli.Result{}} = Butteraugli.Vix.compare(ref_image, dist_image)
 ```
-
-## Accuracy
-
-Scores come from [`butteraugli`](https://github.com/imazen/butteraugli), a
-maintained Rust port of libjxl's butteraugli. Treat the absolute value as
-"butteraugli as computed by this crate." The metric is well-behaved and
-monotonic (identical images score near 0; perceptual degradation raises the
-score), which is what matters for relative use such as a quality-search loop.
-
-## Status
-
-v0.1 supports 8-bit sRGB and linear-f32 RGB input, an optional per-pixel
-difference map, the `intensity_target` / `hf_asymmetry` tuning parameters, and
-cooperative cancellation (`cancel:` / `timeout:`).
 
 ## Releasing
 
@@ -144,9 +142,6 @@ publishing, generate the checksum file the package references:
 ```bash
 mix rustler_precompiled.download Butteraugli.Native --all --print
 ```
-
-This writes `checksum-Elixir.Butteraugli.Native.exs`, which MUST be included in
-the published package (it is already listed in `mix.exs` `:files`).
 
 ### Building from source
 
