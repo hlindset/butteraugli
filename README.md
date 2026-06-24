@@ -64,24 +64,24 @@ the reference. Tuning parameters are baked into the reference at build time:
 ### Cancellation
 
 `compare/5` and `Reference.compare/3` accept `cancel:` (a
-`Butteraugli.CancellationToken`) and `timeout:` (milliseconds):
+`Butteraugli.CancelRef`) and `timeout:` (milliseconds):
 
 ```elixir
-tok = Butteraugli.CancellationToken.new()
+cancel_ref = Butteraugli.CancelRef.new()
 # ... from another process, on client disconnect / deadline:
-Butteraugli.CancellationToken.cancel(tok)
+Butteraugli.cancel(cancel_ref)
 
 # aborted calls return {:error, :cancelled} or {:error, :timeout}
-Butteraugli.compare(ref, dist, w, h, cancel: tok, timeout: 5_000)
+Butteraugli.compare(ref, dist, w, h, cancel: cancel_ref, timeout: 5_000)
 ```
 
-A token is single-use and can cover a whole batch.
+A cancel ref is single-use and can cover a whole batch.
 
-**Granularity.** The default sRGB `compare/5` on images ≥ 8×8 checks the token
+**Granularity.** The default sRGB `compare/5` on images ≥ 8×8 checks the ref
 between strips, so it aborts **mid-computation**. The other paths — `:linear_rgb`,
-sub-8×8 images, and all `Reference.compare/3` — check the token **once at the
+sub-8×8 images, and all `Reference.compare/3` — check the ref **once at the
 start** of the computation (the crate has no strip-wise stop for these): they
-abort a token that is already cancelled when the call begins (so batch
+abort a ref that is already cancelled when the call begins (so batch
 cancellation works — cancel once, every subsequent compare aborts), but do not
 interrupt a compare already underway. To bound the wall-clock of one long
 compare, use the sRGB `compare/5` path rather than a precomputed reference.

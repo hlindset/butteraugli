@@ -20,7 +20,7 @@ defmodule Butteraugli.Validate do
 
   @doc "Returns :ok or {:error, :invalid_cancel}."
   def cancel(nil), do: :ok
-  def cancel(%Butteraugli.CancellationToken{}), do: :ok
+  def cancel(%Butteraugli.CancelRef{}), do: :ok
   def cancel(_), do: {:error, :invalid_cancel}
 
   @doc "Returns :ok or {:error, :invalid_timeout}."

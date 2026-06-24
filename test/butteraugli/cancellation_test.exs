@@ -3,27 +3,27 @@ defmodule Butteraugli.CancellationTest do
   # wall-clock must dominate the cancel/timer; running them serially keeps dirty
   # schedulers uncontended so timing stays predictable.
   use ExUnit.Case, async: false
-  alias Butteraugli.{CancellationToken, Fixtures, Reference, Result}
+  alias Butteraugli.{CancelRef, Fixtures, Reference, Result}
 
   test "compare/5 with a pre-cancelled token returns {:error, :cancelled}" do
     img = Fixtures.gradient(512, 512)
-    tok = CancellationToken.new()
-    :ok = CancellationToken.cancel(tok)
+    tok = CancelRef.new()
+    :ok = Butteraugli.cancel(tok)
     assert {:error, :cancelled} = Butteraugli.compare(img, img, 512, 512, cancel: tok)
   end
 
   test "Reference.compare/3 with a pre-cancelled token returns {:error, :cancelled}" do
     img = Fixtures.gradient(512, 512)
     {:ok, ref} = Reference.new(img, 512, 512)
-    tok = CancellationToken.new()
-    :ok = CancellationToken.cancel(tok)
+    tok = CancelRef.new()
+    :ok = Butteraugli.cancel(tok)
     assert {:error, :cancelled} = Reference.compare(ref, img, cancel: tok)
   end
 
   test "a live token does not affect the result" do
     a = Fixtures.gradient(64, 64)
     b = Fixtures.solid(64, 64, {200, 100, 50})
-    tok = CancellationToken.new()
+    tok = CancelRef.new()
     {:ok, %Result{score: plain}} = Butteraugli.compare(a, b, 64, 64)
     {:ok, %Result{score: with_tok}} = Butteraugli.compare(a, b, 64, 64, cancel: tok)
     # 1.0e-4 (not 1.0e-9): butteraugli builds with rayon by default, so a bare
@@ -36,7 +36,7 @@ defmodule Butteraugli.CancellationTest do
     a = Fixtures.gradient(64, 64)
     b = Fixtures.solid(64, 64, {200, 100, 50})
     {:ok, ref} = Reference.new(a, 64, 64)
-    tok = CancellationToken.new()
+    tok = CancelRef.new()
     {:ok, %Result{score: plain}} = Reference.compare(ref, b)
     {:ok, %Result{score: with_tok}} = Reference.compare(ref, b, cancel: tok)
     # 1.0e-4 (not 1.0e-9): butteraugli builds with rayon by default, so a bare
@@ -52,7 +52,7 @@ defmodule Butteraugli.CancellationTest do
 
     {full_us, {:ok, _}} = :timer.tc(fn -> Butteraugli.compare(big, big, 3000, 3000) end)
 
-    tok = CancellationToken.new()
+    tok = CancelRef.new()
     parent = self()
 
     task =
@@ -63,7 +63,7 @@ defmodule Butteraugli.CancellationTest do
 
     assert_receive :started, 1000
     Process.sleep(10)
-    CancellationToken.cancel(tok)
+    Butteraugli.cancel(tok)
 
     {abort_us, result} = :timer.tc(fn -> Task.await(task, 30_000) end)
     assert {:error, :cancelled} = result
@@ -84,16 +84,16 @@ defmodule Butteraugli.CancellationTest do
     # Verify the entry-check path is wired correctly (already covered above).
     img = Fixtures.solid(64, 64, {123, 50, 200})
     {:ok, ref} = Reference.new(img, 64, 64)
-    tok = CancellationToken.new()
-    :ok = CancellationToken.cancel(tok)
+    tok = CancelRef.new()
+    :ok = Butteraugli.cancel(tok)
     assert {:error, :cancelled} = Reference.compare(ref, img, cancel: tok)
   end
 
   test "a cancelled token aborts every subsequent comparison" do
     a = Fixtures.gradient(64, 64)
     b = Fixtures.solid(64, 64, {200, 100, 50})
-    tok = CancellationToken.new()
-    :ok = CancellationToken.cancel(tok)
+    tok = CancelRef.new()
+    :ok = Butteraugli.cancel(tok)
 
     assert {:error, :cancelled} = Butteraugli.compare(a, b, 64, 64, cancel: tok)
     assert {:error, :cancelled} = Butteraugli.compare(a, b, 64, 64, cancel: tok)
@@ -101,8 +101,8 @@ defmodule Butteraugli.CancellationTest do
 
   test "compare!/5 raises on cancellation" do
     img = Fixtures.gradient(256, 256)
-    tok = CancellationToken.new()
-    :ok = CancellationToken.cancel(tok)
+    tok = CancelRef.new()
+    :ok = Butteraugli.cancel(tok)
 
     assert_raise Butteraugli.Error, fn ->
       Butteraugli.compare!(img, img, 256, 256, cancel: tok)
@@ -112,8 +112,8 @@ defmodule Butteraugli.CancellationTest do
   test "Reference.compare!/3 raises on cancellation" do
     img = Fixtures.gradient(256, 256)
     {:ok, ref} = Reference.new(img, 256, 256)
-    tok = CancellationToken.new()
-    :ok = CancellationToken.cancel(tok)
+    tok = CancelRef.new()
+    :ok = Butteraugli.cancel(tok)
     assert_raise Butteraugli.Error, fn -> Reference.compare!(ref, img, cancel: tok) end
   end
 
@@ -144,7 +144,7 @@ defmodule Butteraugli.CancellationTest do
 
   test "external cancel during a timed call is reported as :cancelled, not :timeout" do
     big = Fixtures.solid(3000, 3000, {1, 2, 3})
-    tok = CancellationToken.new()
+    tok = CancelRef.new()
     parent = self()
 
     task =
@@ -155,7 +155,7 @@ defmodule Butteraugli.CancellationTest do
 
     assert_receive :started, 1000
     Process.sleep(10)
-    CancellationToken.cancel(tok)
+    Butteraugli.cancel(tok)
 
     assert {:error, :cancelled} = Task.await(task, 30_000)
   end

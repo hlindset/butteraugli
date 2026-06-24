@@ -24,21 +24,21 @@ defmodule Butteraugli do
   ## Cancellation
 
   `compare/5` and `Butteraugli.Reference.compare/3` accept `cancel:` (a
-  `Butteraugli.CancellationToken`) and `timeout:` (milliseconds); aborted calls
-  return `{:error, :cancelled}` or `{:error, :timeout}`. See
-  `Butteraugli.CancellationToken`.
+  `Butteraugli.CancelRef`) and `timeout:` (milliseconds); aborted calls return
+  `{:error, :cancelled}` or `{:error, :timeout}`. Create a ref with
+  `Butteraugli.CancelRef.new/0` and trip it with `cancel/1`.
 
   The *granularity* differs by path, because the underlying crate checks the
-  token at different points:
+  ref at different points:
 
-    * **sRGB `compare/5` on images ≥ 8×8** (the default path) checks the token
-      between strips, so it aborts **mid-computation** — a token cancelled, or a
+    * **sRGB `compare/5` on images ≥ 8×8** (the default path) checks the ref
+      between strips, so it aborts **mid-computation** — a ref cancelled, or a
       timeout firing, partway through a long compare stops it promptly.
     * **Every other path** — `:linear_rgb`, sub-8×8 images, and all
-      `Butteraugli.Reference.compare/3` — checks the token **once, at the start**
+      `Butteraugli.Reference.compare/3` — checks the ref **once, at the start**
       of the computation (the crate exposes no strip-wise stop for these). These
-      honor a token that is *already* cancelled when the call begins — including
-      batch cancellation, where cancelling one token aborts every *subsequent*
+      honor a ref that is *already* cancelled when the call begins — including
+      batch cancellation, where cancelling one ref aborts every *subsequent*
       compare that uses it — but a cancel/timeout arriving *after* the
       computation is underway will not interrupt it; that call runs to
       completion.
@@ -48,7 +48,7 @@ defmodule Butteraugli do
   cancellable) rather than `Butteraugli.Reference`.
   """
 
-  alias Butteraugli.{Cancellation, Native, Result, Validate}
+  alias Butteraugli.{Cancellation, CancelRef, Native, Result, Validate}
 
   @type image_data :: binary()
   @type reason ::
@@ -71,7 +71,7 @@ defmodule Butteraugli do
       `diffmap` binary (default `false`).
     * `:intensity_target` — display brightness in nits (crate default if omitted).
     * `:hf_asymmetry` — high-frequency penalty asymmetry (crate default if omitted).
-    * `:cancel` — a `Butteraugli.CancellationToken`; cancelling it from another
+    * `:cancel` — a `Butteraugli.CancelRef`; cancelling it from another
       process aborts the call with `{:error, :cancelled}`.
     * `:timeout` — positive integer milliseconds; the call returns
       `{:error, :timeout}` if it exceeds that.
@@ -121,4 +121,14 @@ defmodule Butteraugli do
       {:error, reason} -> raise Butteraugli.Error, reason: reason
     end
   end
+
+  @doc """
+  Trip a `Butteraugli.CancelRef`, aborting any comparison that uses it.
+
+  Call from any process to cancel an in-flight `compare/5` or
+  `Butteraugli.Reference.compare/3` that was passed this ref as `cancel:`.
+  Returns `:ok` and is safe to call more than once.
+  """
+  @spec cancel(CancelRef.t()) :: :ok
+  def cancel(%CancelRef{resource: r}), do: Native.token_cancel(r)
 end

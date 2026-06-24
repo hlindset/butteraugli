@@ -16,8 +16,8 @@ defmodule Butteraugli.Reference do
 
   Cancellation (`:cancel`/`:timeout`) on a reference compare is checked **once,
   at the start** of each call — the precompute path has no strip-wise stop. It
-  therefore aborts a token that is already cancelled when the call begins
-  (including batch cancellation: cancel one token to abort every subsequent
+  therefore aborts a ref that is already cancelled when the call begins
+  (including batch cancellation: cancel one ref to abort every subsequent
   compare that uses it), but does **not** interrupt a compare that is already
   running. See `Butteraugli` for the full granularity matrix.
   """
@@ -72,7 +72,7 @@ defmodule Butteraugli.Reference do
   Compare a candidate against the precomputed reference (same format and
   dimensions).
 
-  Accepts `:cancel` (a `Butteraugli.CancellationToken`) and `:timeout`
+  Accepts `:cancel` (a `Butteraugli.CancelRef`) and `:timeout`
   (milliseconds), checked once at the start of the call (see the moduledoc and
   `Butteraugli` for the cancellation granularity matrix).
   Returns `{:ok, %Butteraugli.Result{}}` or `{:error, reason}`.

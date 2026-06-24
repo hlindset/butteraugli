@@ -1,4 +1,4 @@
-defmodule Butteraugli.CancellationTokenNativeTest do
+defmodule Butteraugli.CancelRefNativeTest do
   use ExUnit.Case, async: true
   alias Butteraugli.Native
 
@@ -13,18 +13,18 @@ defmodule Butteraugli.CancellationTokenNativeTest do
   end
 end
 
-defmodule Butteraugli.CancellationTokenTest do
+defmodule Butteraugli.CancelRefTest do
   use ExUnit.Case, async: true
-  alias Butteraugli.CancellationToken
+  alias Butteraugli.CancelRef
 
   test "new/0 returns a struct wrapping a resource" do
-    tok = CancellationToken.new()
-    assert %CancellationToken{resource: r} = tok
+    cancel_ref = CancelRef.new()
+    assert %CancelRef{resource: r} = cancel_ref
     assert is_reference(r)
   end
 
-  test "cancel/1 returns :ok" do
-    tok = CancellationToken.new()
-    assert :ok = CancellationToken.cancel(tok)
+  test "Butteraugli.cancel/1 returns :ok" do
+    cancel_ref = CancelRef.new()
+    assert :ok = Butteraugli.cancel(cancel_ref)
   end
 end
