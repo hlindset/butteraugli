@@ -1,0 +1,16 @@
+[package]
+name = "butteraugli_nif"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+
+[lib]
+name = "butteraugli_nif"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.38.0"
+butteraugli = { git = "https://github.com/imazen/butteraugli", rev = "2f91e77e4084801bf53c5f32d404f142e35e76c3" }
+enough = "0.4.4"
+almost-enough = "0.4.4"
+bytemuck = "1"

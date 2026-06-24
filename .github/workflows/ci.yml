@@ -1,0 +1,28 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v4
+      - name: Install deps
+        run: mise exec -- mix deps.get
+      - name: Compile (warnings as errors)
+        run: mise exec -- mix compile --warnings-as-errors
+        env:
+          BUTTERAUGLI_BUILD: "1"
+      - name: Test
+        run: mise exec -- mix test
+      # The optional Vix helper is excluded by default; exercise it explicitly so
+      # an upstream Vix/libvips API change can't regress it unnoticed.
+      - name: Install libvips (for the optional Vix path)
+        run: sudo apt-get update && sudo apt-get install -y libvips-dev
+      - name: Test (incl. Vix)
+        run: mise exec -- mix test --include vix
+        env:
+          BUTTERAUGLI_BUILD: "1"
