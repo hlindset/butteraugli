@@ -34,5 +34,5 @@ defmodule Butteraugli.Native do
   def reference_new(_src, _w, _h, _fmt, _intensity, _hf, _diffmap),
     do: :erlang.nif_error(:nif_not_loaded)
 
-  def reference_compare(_ref, _dist, _cancel), do: :erlang.nif_error(:nif_not_loaded)
+  def reference_compare(_ref, _dist, _cancel, _use_strips), do: :erlang.nif_error(:nif_not_loaded)
 end

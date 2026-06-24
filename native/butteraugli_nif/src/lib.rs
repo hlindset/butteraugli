@@ -232,12 +232,19 @@ fn reference_new(
     Ok(ResourceArc::new(ReferenceResource { inner, format: fmt }))
 }
 
+// `use_strips` selects the strip-bounded walker (bounded peak memory + per-strip
+// mid-flight cancellation) over the default warm path (reuses the precomputed
+// reference pyramid — ~2x faster — but checks cancellation only at entry). The
+// strip walker recomputes the reference side per strip, discarding the
+// precompute. References are always >= 8x8 (built via reference_new), so the
+// strip walker's minimum-size requirement always holds here.
 #[rustler::nif(schedule = "DirtyCpu")]
 fn reference_compare<'a>(
     env: Env<'a>,
     reference: ResourceArc<ReferenceResource>,
     distorted: Binary,
     cancel: Option<ResourceArc<StopResource>>,
+    use_strips: bool,
 ) -> Result<(f64, f64, Term<'a>), CompareError> {
     let unstoppable = Unstoppable;
     let stop: &dyn Stop = match &cancel {
@@ -245,9 +252,15 @@ fn reference_compare<'a>(
         None => &unstoppable,
     };
     let d = distorted.as_slice();
-    let result = match reference.format {
-        Format::Rgb888 => reference.inner.compare_with_stop(d, stop),
-        Format::LinearRgb => reference.inner.compare_linear_with_stop(&to_f32_vec(d), stop),
+    let result = match (&reference.format, use_strips) {
+        (Format::Rgb888, false) => reference.inner.compare_with_stop(d, stop),
+        (Format::Rgb888, true) => reference.inner.compare_strip_with_stop(d, STRIP_HEIGHT, stop),
+        (Format::LinearRgb, false) => reference.inner.compare_linear_with_stop(&to_f32_vec(d), stop),
+        (Format::LinearRgb, true) => {
+            reference
+                .inner
+                .compare_linear_strip_with_stop(&to_f32_vec(d), STRIP_HEIGHT, stop)
+        }
     }
     .map_err(to_compare_error)?;
     encode_result(env, result)

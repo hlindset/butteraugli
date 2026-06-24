@@ -34,19 +34,21 @@ defmodule Butteraugli do
     * **`compare/5` on images ≥ 8×8** (either format) checks the ref between
       strips, so it aborts **mid-computation** — a ref cancelled, or a timeout
       firing, partway through a long compare stops it promptly.
-    * **Sub-8×8 images and all `Butteraugli.Reference.compare/3`** check the ref
-      **once, at the start** of the computation. (Sub-8×8 inputs are padded and
-      take the non-strip path; `Butteraugli.Reference.compare/3` uses the
-      precomputed reference on purpose — the crate's strip-cancellable reference
-      compare discards the precompute and its ~2× speedup.) These honor a ref
-      that is *already* cancelled when the call begins — including batch
-      cancellation, where cancelling one ref aborts every *subsequent* compare
-      that uses it — but a cancel/timeout arriving *after* the computation is
-      underway will not interrupt it; that call runs to completion.
+    * **Sub-8×8 images, and `Butteraugli.Reference.compare/3` with the default
+      `prefer: :speed`** check the ref **once, at the start** of the computation.
+      (Sub-8×8 inputs are padded onto the non-strip path; `prefer: :speed` uses
+      the precomputed reference for the ~2× speedup, which has no strip-wise
+      stop.) These honor a ref that is *already* cancelled when the call begins —
+      including batch cancellation, where cancelling one ref aborts every
+      *subsequent* compare that uses it — but a cancel/timeout arriving *after*
+      the computation is underway will not interrupt it; that call runs to
+      completion.
+    * **`Butteraugli.Reference.compare/3` with `prefer: :memory`** opts into the
+      strip-bounded walker: bounded peak memory and per-strip **mid-computation**
+      cancellation, trading away the precompute speedup.
 
   If you must bound the wall-clock of an individual long compare, use `compare/5`
-  on a ≥ 8×8 image (it rebuilds the reference each call but is fully cancellable)
-  rather than `Butteraugli.Reference`.
+  on a ≥ 8×8 image, or `Butteraugli.Reference.compare/3` with `prefer: :memory`.
   """
 
   alias Butteraugli.{Cancellation, CancelRef, Native, Result, Validate}
@@ -59,6 +61,7 @@ defmodule Butteraugli do
           | :unknown_format
           | :invalid_cancel
           | :invalid_timeout
+          | :invalid_prefer
           | :cancelled
           | :timeout
           | {:butteraugli, String.t()}

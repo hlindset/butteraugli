@@ -61,6 +61,12 @@ the reference. Tuning parameters are baked into the reference at build time:
 {:ok, s2} = Butteraugli.Reference.compare(ref, candidate2_rgb)
 ```
 
+`Reference.compare/3` takes `prefer: :speed | :memory` (default `:speed`).
+`:speed` reuses the precomputed reference (~2× faster, cancellation checked only
+at the start); `:memory` runs a strip-bounded walker with bounded peak memory and
+per-strip mid-flight cancellation, giving up the speedup. See
+[Cancellation](#cancellation).
+
 ### Cancellation
 
 `compare/5` and `Reference.compare/3` accept `cancel:` (a
@@ -78,15 +84,16 @@ Butteraugli.compare(ref, dist, w, h, cancel: cancel_ref, timeout: 5_000)
 A cancel ref is single-use and can cover a whole batch.
 
 **Granularity.** `compare/5` on images ≥ 8×8 (either format) checks the ref
-between strips, so it aborts **mid-computation**. Sub-8×8 images and all
-`Reference.compare/3` check the ref **once at the start** of the computation:
-sub-8×8 inputs are padded onto the non-strip path, and `Reference.compare/3`
-uses the precomputed reference on purpose (the crate's strip-cancellable
-reference compare discards the precompute and its ~2× speedup). These abort a
-ref that is already cancelled when the call begins (so batch cancellation works
-— cancel once, every subsequent compare aborts), but do not interrupt a compare
-already underway. To bound the wall-clock of one long compare, use `compare/5`
-on a ≥ 8×8 image rather than a precomputed reference.
+between strips, so it aborts **mid-computation**. Two paths check the ref **once
+at the start** instead: sub-8×8 images (padded onto the non-strip path) and
+`Reference.compare/3` with the default `prefer: :speed` (which reuses the
+precomputed reference for the ~2× speedup). These abort a ref that is already
+cancelled when the call begins (so batch cancellation works — cancel once, every
+subsequent compare aborts), but do not interrupt a compare already underway.
+`Reference.compare/3` with `prefer: :memory` opts into the strip-bounded walker,
+which aborts **mid-computation** (per strip) at the cost of the speedup. To bound
+the wall-clock of one long compare, use `compare/5` on a ≥ 8×8 image or
+`Reference.compare(ref, dist, prefer: :memory)`.
 
 ### With Vix
 

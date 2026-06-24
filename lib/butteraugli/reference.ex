@@ -14,16 +14,22 @@ defmodule Butteraugli.Reference do
   the same settings. If `compute_diffmap: true` was passed to `new/4`, each
   result carries a `diffmap`.
 
-  Cancellation (`:cancel`/`:timeout`) on a reference compare is checked **once,
-  at the start** of each call. This binding uses the warm precomputed path on
-  purpose: the crate does expose a strip-cancellable reference compare, but it
-  discards the precomputed reference (recomputing the reference side per strip),
-  defeating the ~2× speedup that is the whole point of `Butteraugli.Reference`.
-  So a reference compare aborts a ref that is already cancelled when the call
-  begins (including batch cancellation: cancel one ref to abort every subsequent
-  compare that uses it), but does **not** interrupt a compare that is already
-  running. If you need mid-flight cancellation, use `Butteraugli.compare/5` on a
-  ≥ 8×8 image. See `Butteraugli` for the full granularity matrix.
+  Cancellation granularity on a reference compare depends on `compare/3`'s
+  `:prefer` option:
+
+    * `:prefer` `:speed` (default) — the warm precomputed path. Cancellation
+      (`:cancel`/`:timeout`) is checked **once, at the start** of each call: it
+      aborts a ref that is already cancelled when the call begins (including
+      batch cancellation — cancel one ref to abort every subsequent compare that
+      uses it), but does **not** interrupt a compare already running.
+    * `:prefer` `:memory` — the strip-bounded walker. Cancellation is checked
+      **per strip**, so a `cancel`/`timeout` arriving mid-compare aborts
+      promptly, at the cost of the precompute speedup.
+
+  `:speed` is the default because reusing the precomputed reference is the whole
+  point of `Butteraugli.Reference` (~2× per call); reach for `:memory` only when
+  you need bounded peak memory or mid-flight cancellation. See `Butteraugli` for
+  the full granularity matrix.
   """
 
   alias Butteraugli.{Cancellation, Native, Result, Validate}
@@ -76,9 +82,21 @@ defmodule Butteraugli.Reference do
   Compare a candidate against the precomputed reference (same format and
   dimensions).
 
-  Accepts `:cancel` (a `Butteraugli.CancelRef`) and `:timeout`
-  (milliseconds), checked once at the start of the call (see the moduledoc and
-  `Butteraugli` for the cancellation granularity matrix).
+  Options:
+    * `:cancel` — a `Butteraugli.CancelRef`.
+    * `:timeout` — positive integer milliseconds.
+    * `:prefer` — `:speed` (default) or `:memory`, choosing how the comparison
+      runs:
+      * `:speed` — reuse the precomputed reference pyramid. Roughly **twice as
+        fast** per call, but cancellation/timeout is checked **once, at the
+        start** only (mid-flight cancellation is *not* honored).
+      * `:memory` — run the strip-bounded walker instead: **bounded peak
+        memory** and **per-strip mid-flight cancellation** (a `cancel`/`timeout`
+        arriving partway through aborts promptly). This recomputes the reference
+        side per strip, so it gives up the precompute speedup — expect it to be
+        roughly as slow as a one-shot `Butteraugli.compare/5`.
+
+  Both modes return the same score (modulo low-bit floating-point differences).
   Returns `{:ok, %Butteraugli.Result{}}` or `{:error, reason}`.
   """
   @spec compare(t(), Butteraugli.image_data(), keyword()) ::
@@ -86,12 +104,16 @@ defmodule Butteraugli.Reference do
   def compare(%__MODULE__{} = ref, distorted, opts \\ []) when is_binary(distorted) do
     cancel = Keyword.get(opts, :cancel)
     timeout = Keyword.get(opts, :timeout)
+    prefer = Keyword.get(opts, :prefer, :speed)
 
     with :ok <- Validate.size(distorted, ref.width, ref.height, ref.format),
          :ok <- Validate.cancel(cancel),
-         :ok <- Validate.timeout(timeout) do
+         :ok <- Validate.timeout(timeout),
+         :ok <- Validate.prefer(prefer) do
+      use_strips = prefer == :memory
+
       Cancellation.run(cancel, timeout, fn resource ->
-        Native.reference_compare(ref.resource, distorted, resource)
+        Native.reference_compare(ref.resource, distorted, resource, use_strips)
       end)
       |> Result.from_native()
     end

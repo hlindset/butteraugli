@@ -117,6 +117,51 @@ defmodule Butteraugli.CancellationTest do
     assert {:error, :cancelled} = Reference.compare(ref, img, cancel: tok)
   end
 
+  test "Reference.compare/3 prefer: :memory yields the same score as :speed" do
+    a = Fixtures.gradient(300, 300)
+    b = Fixtures.solid(300, 300, {200, 100, 50})
+    {:ok, ref} = Reference.new(a, 300, 300)
+    {:ok, %Result{score: speed}} = Reference.compare(ref, b, prefer: :speed)
+    {:ok, %Result{score: memory}} = Reference.compare(ref, b, prefer: :memory)
+    # 1.0e-4: same rayon FP-reduction nondeterminism note as the live-token tests.
+    assert_in_delta speed, memory, 1.0e-4
+  end
+
+  test "Reference.compare/3 with prefer: :memory aborts an in-flight compare" do
+    # The default :speed (warm) path checks the token only at entry, so it cannot
+    # be cancelled mid-flight; :memory uses the strip walker, which can. 3000x3000
+    # runs well past the ~10 ms head start, so the cancel lands mid-flight.
+    big = Fixtures.solid(3000, 3000, {123, 50, 200})
+    {:ok, ref} = Reference.new(big, 3000, 3000)
+
+    {full_us, {:ok, _}} = :timer.tc(fn -> Reference.compare(ref, big, prefer: :memory) end)
+
+    tok = CancelRef.new()
+    parent = self()
+
+    task =
+      Task.async(fn ->
+        send(parent, :started)
+        Reference.compare(ref, big, cancel: tok, prefer: :memory)
+      end)
+
+    assert_receive :started, 1000
+    Process.sleep(10)
+    Butteraugli.cancel(tok)
+
+    {abort_us, result} = :timer.tc(fn -> Task.await(task, 30_000) end)
+    assert {:error, :cancelled} = result
+    # Proves the abort was mid-flight, not run-to-completion.
+    assert abort_us < full_us / 2
+  end
+
+  test "an invalid :prefer value is rejected" do
+    a = Fixtures.gradient(64, 64)
+    b = Fixtures.solid(64, 64, {200, 100, 50})
+    {:ok, ref} = Reference.new(a, 64, 64)
+    assert {:error, :invalid_prefer} = Reference.compare(ref, b, prefer: :fastest)
+  end
+
   test "a cancelled token aborts every subsequent comparison" do
     a = Fixtures.gradient(64, 64)
     b = Fixtures.solid(64, 64, {200, 100, 50})
