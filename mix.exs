@@ -42,8 +42,8 @@ defmodule Butteraugli.MixProject do
         "butteraugli" => "https://github.com/imazen/butteraugli"
       },
       files: ~w(lib native/butteraugli_nif/src native/butteraugli_nif/Cargo.toml
-                native/butteraugli_nif/Cargo.lock mix.exs README.md CHANGELOG.md
-                checksum-*.exs)
+                native/butteraugli_nif/Cargo.lock native/butteraugli_nif/.cargo/config.toml
+                mix.exs README.md CHANGELOG.md checksum-*.exs)
     ]
   end
 
