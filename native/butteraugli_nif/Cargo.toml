@@ -15,8 +15,11 @@ enough = "0.4.4"
 almost-enough = "0.4.4"
 bytemuck = "1"
 
+# Required since Rustler 0.30: expose per-NIF-version features so the
+# rustler_precompiled build can select the target NIF version. See
+# https://hexdocs.pm/rustler_precompiled/precompilation_guide.html
 [features]
 default = ["nif_version_2_15"]
 nif_version_2_15 = ["rustler/nif_version_2_15"]
-nif_version_2_16 = ["rustler/nif_version_2_16", "nif_version_2_15"]
-nif_version_2_17 = ["rustler/nif_version_2_17", "nif_version_2_16"]
+nif_version_2_16 = ["rustler/nif_version_2_16"]
+nif_version_2_17 = ["rustler/nif_version_2_17"]

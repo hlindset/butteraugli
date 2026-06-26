@@ -1,7 +1,6 @@
-# musl targets default to static-CRT linking, which cannot produce the `cdylib`
-# a NIF requires. Disabling `crt-static` lets the musl builds emit a shared
-# object. Applies to both the precompiled-NIF cross builds and any from-source
-# build on a musl host; gnu/darwin/windows targets are unaffected.
+# musl targets statically link the CRT by default, which cannot produce the
+# cdylib a NIF needs. Disable crt-static so the precompiled (cross) builds
+# emit a dynamic library. Other targets are unaffected.
 [target.x86_64-unknown-linux-musl]
 rustflags = ["-C", "target-feature=-crt-static"]
 
