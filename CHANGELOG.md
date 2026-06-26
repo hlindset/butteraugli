@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-06-26
+
 ### Added
 
 - `Butteraugli.compare/5` and `compare!/5` — compute the butteraugli perceptual
@@ -46,4 +48,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The underlying crate is a port of Google's butteraugli implementation from
   libjxl.
 
-[Unreleased]: https://github.com/hlindset/butteraugli/commits/main
+[Unreleased]: https://github.com/hlindset/butteraugli/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/hlindset/butteraugli/releases/tag/v0.1.0
