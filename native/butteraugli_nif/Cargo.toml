@@ -9,8 +9,14 @@ name = "butteraugli_nif"
 crate-type = ["cdylib"]
 
 [dependencies]
-rustler = "0.38.0"
+rustler = { version = "0.38.0", default-features = false, features = ["derive"] }
 butteraugli = { git = "https://github.com/imazen/butteraugli", rev = "4e78d6d" }
 enough = "0.4.4"
 almost-enough = "0.4.4"
 bytemuck = "1"
+
+[features]
+default = ["nif_version_2_15"]
+nif_version_2_15 = ["rustler/nif_version_2_15"]
+nif_version_2_16 = ["rustler/nif_version_2_16", "nif_version_2_15"]
+nif_version_2_17 = ["rustler/nif_version_2_17", "nif_version_2_16"]
