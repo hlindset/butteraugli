@@ -23,6 +23,11 @@ jobs:
           - { target: x86_64-pc-windows-msvc, os: windows-2022 }
     steps:
       - uses: actions/checkout@v4
+      # The macos-14 runner is Apple Silicon (aarch64); building the x86_64
+      # target there needs its std installed, which the action doesn't add.
+      - name: Add x86_64 target for macOS cross-compile
+        if: matrix.job.target == 'x86_64-apple-darwin'
+        run: rustup target add x86_64-apple-darwin
       - uses: philss/rustler-precompiled-action@v1.1.5
         with:
           project-name: butteraugli_nif
