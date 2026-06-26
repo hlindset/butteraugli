@@ -139,18 +139,16 @@ If `:vix` is a dependency, you can pass images directly (coerced to 8-bit sRGB):
 
 ## Releasing
 
-Precompiled NIFs are built by the GitHub release workflow on a `v*` tag. Before
-publishing, generate the checksum file the package references:
-
-```bash
-mix rustler_precompiled.download Butteraugli.Native --all --print
-```
+Precompiled NIFs are built by the GitHub release workflow on a `v*` tag. See
+[RELEASING.md](https://github.com/hlindset/butteraugli/blob/main/RELEASING.md)
+for the full publish checklist.
 
 ### Building from source
 
 A Rust toolchain is only needed if you build the NIF locally instead of using a
 precompiled artifact — i.e. on a target not covered by the release matrix, or
-when forcing a build with `BUTTERAUGLI_BUILD=1`.
+when forcing a build with `BUTTERAUGLI_BUILD=1`. In that case `butteraugli`
+requires **Rust ≥ 1.89** (the crate pins that MSRV).
 
 ## LLM Development Notice
 

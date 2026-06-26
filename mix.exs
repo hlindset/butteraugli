@@ -20,7 +20,7 @@ defmodule Butteraugli.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md"]
+      extras: ["README.md", "CHANGELOG.md"]
     ]
   end
 
@@ -42,7 +42,8 @@ defmodule Butteraugli.MixProject do
         "butteraugli" => "https://github.com/imazen/butteraugli"
       },
       files: ~w(lib native/butteraugli_nif/src native/butteraugli_nif/Cargo.toml
-                native/butteraugli_nif/Cargo.lock mix.exs README.md checksum-*.exs)
+                native/butteraugli_nif/Cargo.lock mix.exs README.md CHANGELOG.md
+                checksum-*.exs)
     ]
   end
 
